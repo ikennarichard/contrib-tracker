@@ -52,12 +52,16 @@ func saveContributions(contribs []Contribution) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", " ")
 
 	if err := encoder.Encode(contribs); err != nil {
+		f.Close()
+		return err
+	}
+	
+	if err := f.Close(); err != nil {
 		return err
 	}
 
