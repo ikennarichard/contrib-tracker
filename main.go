@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type Contribution struct {
 }
 
 const dataFile = "contributions.json"
+var mu sync.Mutex
 
 // streaming + safe empty file handling
 func loadContributions() ([]Contribution, error) {
@@ -84,7 +86,6 @@ func main() {
 
 func addCmd(args []string) {
 	fs := flag.NewFlagSet("add", flag.ExitOnError)
-
 	title := fs.String("title", "", "Contribution title")
 	repo := fs.String("repo", "", "Repository (owner/repo)")
 	date := fs.String("date", "", "Date (YYYY-MM-DD)")
@@ -101,6 +102,8 @@ func addCmd(args []string) {
 	if *date == "" {
 		*date = time.Now().Format("2006-01-02")
 	}
+	mu.Lock()
+	defer mu.Unlock() // no over lap or data loss
 
 	contribs, err := loadContributions()
 	if err != nil {
@@ -152,7 +155,7 @@ func listCmd(args []string) {
 }
 
 func printUsage() {
-	fmt.Println("contrib-cli — Go CLI for tracking contributions")
+	fmt.Println("Go CLI for tracking contributions")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  go run main.go <command> [options]")
