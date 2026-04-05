@@ -1,0 +1,26 @@
+*.exe
+*.out
+
+# Go build files
+*.test
+*.prof
+
+# Dependency directories (if any)
+vendor/
+*.exe
+*.out
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Logs
+*.log
+*.tmp
+.env
+contributions.json
