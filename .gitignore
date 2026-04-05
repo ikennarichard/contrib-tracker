@@ -9,6 +9,7 @@
 vendor/
 *.exe
 *.out
+*-cli
 
 # IDE files
 .vscode/

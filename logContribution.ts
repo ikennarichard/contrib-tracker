@@ -5,8 +5,6 @@ function run() {
   const repo = "demo/repo";
   const url = "https://github.com/demo/repo";
 
-  // const binary = platform() === "win32" ? "contrib-cli.exe" : "./contrib-cli";
-
   try {
     execSync(
       `go run main.go add --title "${title}" --repo "${repo}" --url "${url}"`,
