@@ -8,44 +8,38 @@ import (
 	"io"
 	"os"
 	"sync"
-	"time"
-)
 
-type Contribution struct {
-	Title string `json:"title"`
-	Repo  string `json:"repo"`
-	Date  string `json:"date"`
-	URL   string `json:"url"`
-}
+	"github.com/ikennarichard/contrib-tracker/internal/domain"
+)
 
 const dataFile = "contributions.json"
 var mu sync.Mutex
 
 // streaming + safe empty file handling
-func loadContributions() ([]Contribution, error) {
+func loadContributions() ([]*domain.Contribution, error) {
 	file, err := os.Open(dataFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return []Contribution{}, nil
+			return []*domain.Contribution{}, nil
 		}
 		return nil, err
 	}
 	defer file.Close()
 
-	var contribs []Contribution
+	var contributions []*domain.Contribution
 	decoder := json.NewDecoder(file)
 
-	if err := decoder.Decode(&contribs); err != nil {
+	if err := decoder.Decode(&contributions); err != nil {
 		if errors.Is(err, io.EOF) {
-			return []Contribution{}, nil
+			return []*domain.Contribution{}, nil
 		}
 		return nil, err
 	}
 
-	return contribs, nil
+	return contributions, nil
 }
 
-func saveContributions(contribs []Contribution) error {
+func saveContributions(contributions []*domain.Contribution) error {
 	tmpFile := dataFile + ".tmp"
 
 	f, err := os.Create(tmpFile)
@@ -56,7 +50,7 @@ func saveContributions(contribs []Contribution) error {
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", " ")
 
-	if err := encoder.Encode(contribs); err != nil {
+	if err := encoder.Encode(contributions); err != nil {
 		f.Close()
 		return err
 	}
@@ -97,34 +91,24 @@ func addCmd(args []string) {
 
 	fs.Parse(args)
 
-	if *title == "" || *repo == "" {
-		fmt.Fprintln(os.Stderr, "Error: --title and --repo are required")
-		fs.Usage()
-		os.Exit(1)
-	}
-
-	if *date == "" {
-		*date = time.Now().Format("2006-01-02")
-	}
 	mu.Lock()
 	defer mu.Unlock() // no over lap or data loss
 
-	contribs, err := loadContributions()
+	contributions, err := loadContributions()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error loading contributions:", err)
 		os.Exit(1)
 	}
 
-	newContrib := Contribution{
-		Title: *title,
-		Repo:  *repo,
-		Date:  *date,
-		URL:   *url,
-	}
+ contrib, err := domain.NewContribution(*title, *repo, *date, *url)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Validation error:", err)
+        os.Exit(1)
+    }
 
-	contribs = append(contribs, newContrib)
+	contributions = append(contributions, contrib)
 
-	if err := saveContributions(contribs); err != nil {
+	if err := saveContributions(contributions); err != nil {
 		fmt.Fprintln(os.Stderr, "Error saving:", err)
 		os.Exit(1)
 	}
@@ -136,18 +120,18 @@ func listCmd(args []string) {
 	fs := flag.NewFlagSet("list", flag.ExitOnError)
 	fs.Parse(args)
 
-	contribs, err := loadContributions()
+	contributions, err := loadContributions()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 
-	if len(contribs) == 0 {
+	if len(contributions) == 0 {
 		fmt.Println("No contributions yet.")
 		return
 	}
 
-	for i, c := range contribs {
+	for i, c := range contributions {
 		fmt.Printf("%d. %s\n", i+1, c.Title)
 		fmt.Printf("   Repo: %s\n", c.Repo)
 		fmt.Printf("   Date: %s\n", c.Date)
