@@ -1,158 +1,135 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
-	"flag"
-	"fmt"
-	"io"
-	"os"
-	"sync"
+    "flag"
+    "fmt"
+    "log"
+    "os"
 
-	"github.com/ikennarichard/contrib-tracker/internal/domain"
+    "github.com/joho/godotenv"
+    "github.com/ikennarichard/contrib-tracker/internal/postgres"
+    "github.com/ikennarichard/contrib-tracker/internal/service"
 )
 
-const dataFile = "contributions.json"
-var mu sync.Mutex
-
-// streaming + safe empty file handling
-func loadContributions() ([]*domain.Contribution, error) {
-	file, err := os.Open(dataFile)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return []*domain.Contribution{}, nil
-		}
-		return nil, err
-	}
-	defer file.Close()
-
-	var contributions []*domain.Contribution
-	decoder := json.NewDecoder(file)
-
-	if err := decoder.Decode(&contributions); err != nil {
-		if errors.Is(err, io.EOF) {
-			return []*domain.Contribution{}, nil
-		}
-		return nil, err
-	}
-
-	return contributions, nil
-}
-
-func saveContributions(contributions []*domain.Contribution) error {
-	tmpFile := dataFile + ".tmp"
-
-	f, err := os.Create(tmpFile)
-	if err != nil {
-		return err
-	}
-
-	encoder := json.NewEncoder(f)
-	encoder.SetIndent("", " ")
-
-	if err := encoder.Encode(contributions); err != nil {
-		f.Close()
-		return err
-	}
-	
-	if err := f.Close(); err != nil {
-		return err
-	}
-
-	return os.Rename(tmpFile, dataFile)
-}
-
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
+    if err := godotenv.Load(); err != nil {
+        log.Fatal("Error loading .env file")
+    }
 
-	switch os.Args[1] {
-	case "add":
-		addCmd(os.Args[2:])
-	case "list":
-		listCmd(os.Args[2:])
-	case "help":
-		printUsage()
-	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
-		printUsage()
-		os.Exit(1)
-	}
-}
+    connStr := os.Getenv("DATABASE_URL")
+    if connStr == "" {
+        log.Fatal("DATABASE_URL is not set")
+    }
 
-func addCmd(args []string) {
-	fs := flag.NewFlagSet("add", flag.ExitOnError)
-	title := fs.String("title", "", "Contribution title")
-	repo := fs.String("repo", "", "Repository (owner/repo)")
-	date := fs.String("date", "", "Date (YYYY-MM-DD)")
-	url := fs.String("url", "", "URL")
-
-	fs.Parse(args)
-
-	mu.Lock()
-	defer mu.Unlock() // no over lap or data loss
-
-	contributions, err := loadContributions()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error loading contributions:", err)
-		os.Exit(1)
-	}
-
- contrib, err := domain.NewContribution(*title, *repo, *date, *url)
+    repo, err := postgres.New(connStr)
     if err != nil {
-        fmt.Fprintln(os.Stderr, "Validation error:", err)
+        log.Fatalf("failed to connect: %v", err)
+    }
+    defer repo.Close()
+
+    svc := service.New(repo)
+
+    if len(os.Args) < 2 {
+        printUsage()
         os.Exit(1)
     }
 
-	contributions = append(contributions, contrib)
-
-	if err := saveContributions(contributions); err != nil {
-		fmt.Fprintln(os.Stderr, "Error saving:", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Contribution added")
+    switch os.Args[1] {
+    case "add":
+        addCmd(os.Args[2:], svc)
+    case "list":
+        listCmd(svc)
+    case "filter":
+        filterCmd(os.Args[2:], svc)
+    default:
+        fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", os.Args[1])
+        printUsage()
+        os.Exit(1)
+    }
 }
 
-func listCmd(args []string) {
-	fs := flag.NewFlagSet("list", flag.ExitOnError)
-	fs.Parse(args)
+func addCmd(args []string, svc *service.ContributionService) {
+    fs := flag.NewFlagSet("add", flag.ExitOnError)
+    title := fs.String("title", "", "Contribution title")
+    repo  := fs.String("repo", "", "Repository (owner/repo)")
+    date  := fs.String("date", "", "Date (YYYY-MM-DD), defaults to today")
+    url   := fs.String("url", "", "URL to PR, issue or commit")
+    fs.Parse(args)
 
-	contributions, err := loadContributions()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		os.Exit(1)
-	}
+    if err := svc.Add(*title, *repo, *date, *url); err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
 
-	if len(contributions) == 0 {
-		fmt.Println("No contributions yet.")
-		return
-	}
+    fmt.Println("Contribution added.")
+}
 
-	for i, c := range contributions {
-		fmt.Printf("%d. %s\n", i+1, c.Title)
-		fmt.Printf("   Repo: %s\n", c.Repo)
-		fmt.Printf("   Date: %s\n", c.Date)
-		if c.URL != "" {
-			fmt.Printf("   URL:  %s\n", c.URL)
-		}
-		fmt.Println()
-	}
+func listCmd(svc *service.ContributionService) {
+    contribs, err := svc.List()
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    if len(contribs) == 0 {
+        fmt.Println("No contributions yet.")
+        return
+    }
+
+    for i, c := range contribs {
+        fmt.Printf("%d. %s\n", i+1, c.Title)
+        fmt.Printf("   Repo: %s\n", c.Repo)
+        fmt.Printf("   Date: %s\n", c.Date)
+        if c.URL != "" {
+            fmt.Printf("   URL:  %s\n", c.URL)
+        }
+        fmt.Println()
+    }
+}
+
+func filterCmd(args []string, svc *service.ContributionService) {
+    fs := flag.NewFlagSet("filter", flag.ExitOnError)
+    repo := fs.String("repo", "", "Filter by repository (owner/repo)")
+    fs.Parse(args)
+
+    if *repo == "" {
+        fmt.Fprintln(os.Stderr, "Error: --repo is required")
+        os.Exit(1)
+    }
+
+    contribs, err := svc.FindByRepo(*repo)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "Error:", err)
+        os.Exit(1)
+    }
+
+    if len(contribs) == 0 {
+        fmt.Printf("No contributions found for %s\n", *repo)
+        return
+    }
+
+    for i, c := range contribs {
+        fmt.Printf("%d. %s\n", i+1, c.Title)
+        fmt.Printf("   Repo: %s\n", c.Repo)
+        fmt.Printf("   Date: %s\n", c.Date)
+        if c.URL != "" {
+            fmt.Printf("   URL:  %s\n", c.URL)
+        }
+        fmt.Println()
+    }
 }
 
 func printUsage() {
-	fmt.Println("Go CLI for tracking contributions")
-	fmt.Println()
-	fmt.Println("Usage:")
-	fmt.Println("  go run main.go <command> [options]")
-	fmt.Println()
-	fmt.Println("Commands:")
-	fmt.Println("  add     Add a new contribution")
-	fmt.Println("  list    List all contributions")
-	fmt.Println()
-	fmt.Println("Examples:")
-	fmt.Println("  go run main.go add --title \"Fix bug\" --repo \"owner/repo\"")
-	fmt.Println("  go run main.go list")
+    fmt.Println("Usage:")
+    fmt.Println("  go run main.go <command> [options]")
+    fmt.Println()
+    fmt.Println("Commands:")
+    fmt.Println("  add     Add a new contribution")
+    fmt.Println("  list    List all contributions")
+    fmt.Println("  filter  Filter contributions by repo")
+    fmt.Println()
+    fmt.Println("Examples:")
+    fmt.Println(`  go run main.go add --title "Fix bug" --repo "owner/repo"`)
+    fmt.Println(`  go run main.go list`)
+    fmt.Println(`  go run main.go filter --repo "owner/repo"`)
 }
