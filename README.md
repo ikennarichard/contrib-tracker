@@ -5,14 +5,17 @@ A lightweight CLI tool for logging and viewing your personal open-source contrib
 ## Features
 
 - Add contributions with a title, repository, date, and optional URL
-- List all logged contributions in a clean, readable format
-- Stores data locally in a JSON file (`contributions.json`)
+- List all logged contributions ordered by date
+- Filter contributions by repository
 - Auto-fills today's date if none is provided
-- Safe concurrent writes using mutex locking and atomic file rename
+- Input validation on the domain entity
+- Persistent storage in PostgreSQL using prepared statements
+- Clean architecture — domain, repository, service, and CLI layers fully separated
 
 ## Prerequisites
 
 - [Go](https://golang.org/dl/) 1.18 or higher
+- [Docker](https://docker.com/) (for running PostgreSQL locally)
 
 ## Installation
 
@@ -21,6 +24,30 @@ Clone the repository and navigate into it:
 ```bash
 git clone https://github.com/ikennarichard/contrib-tracker.git
 cd contrib-tracker
+go mod tidy
+```
+
+### Database Setup
+
+Start a PostgreSQL container with Docker:
+
+```bash
+docker run -p 5435:5432 --name contrib-db \
+  -e POSTGRES_PASSWORD=yourpassword \
+  -e POSTGRES_DB=contrib_tracker \
+  -d postgres
+```
+
+If the container already exists from a previous run, just start it:
+
+```bash
+docker start contrib-db
+```
+
+### Environment Variables
+
+```bash
+DATABASE_URL="postgres://postgres:yourpassword@localhost:5435/contrib_tracker?sslmode=disable"
 ```
 
 ## Usage
@@ -75,9 +102,22 @@ go run main.go list
 go run main.go help
 ```
 
-## Data Storage
+## Running Tests
 
-Contributions are persisted locally in a `contributions.json` file in the project root. This file is created automatically on the first `add` command. You can back it up, version-control it, or share it as needed.
+Tests use only the standard testing package and an in-memory mock repository — no database or Docker required.
+
+Run all tests:
+
+```bash
+go test ./...
+```
+
+Run specific package
+
+```bash
+go test ./internal/domain/...
+go test ./internal/service/...
+```
 
 ## Contributing
 
@@ -87,7 +127,6 @@ Some ideas for contributions:
 
 - `delete` command to remove a contribution by index
 - `edit` command to update an existing entry
-- Filter support for `list` (e.g. `--repo=owner/repo`)
 - Colorized and table-formatted output
 - Export to CSV or Markdown
 
