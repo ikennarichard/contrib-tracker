@@ -1,0 +1,25 @@
+{
+  "name": "contrib-tracker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikennarichard/contrib-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ikennarichard/contrib-tracker/issues"
+  },
+  "homepage": "https://github.com/ikennarichard/contrib-tracker#readme",
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
