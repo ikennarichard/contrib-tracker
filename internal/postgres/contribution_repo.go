@@ -134,7 +134,6 @@ func scanRows(rows *sql.Rows) ([]*domain.Contribution, error) {
     return results, nil
 }
 
-// Close cleans up prepared statements and the connection pool.
 func (r *ContributionRepo) Close() error {
     for _, stmt := range []*sql.Stmt{r.stmtAdd, r.stmtList, r.stmtFindByRepo} {
         if stmt != nil {

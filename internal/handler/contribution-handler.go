@@ -39,14 +39,23 @@ func (h *ContributionHandler) Create(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Basic validation
+    if req.Title == "" || req.Repo == "" {
+        http.Error(w, "title and repository are required", http.StatusBadRequest)
+        return
+    }
+
     err := h.service.Add(req.Title, req.Repo, req.Date, req.URL)
     if err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
+    w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(map[string]string{"message": "Contribution added successfully"})
+    json.NewEncoder(w).Encode(map[string]string{
+        "message": "Contribution added successfully",
+    })
 }
 
 func (h *ContributionHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +75,15 @@ func (h *ContributionHandler) List(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if contribs == nil {
+        contribs = []*domain.Contribution{}
+    }
+
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(contribs)
+    if err := json.NewEncoder(w).Encode(contribs); err != nil {
+        http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+        return
+    }
 }
 
 func (h *ContributionHandler) ListByRepo(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +99,13 @@ func (h *ContributionHandler) ListByRepo(w http.ResponseWriter, r *http.Request)
         return
     }
 
+    if contribs == nil {
+        contribs = []*domain.Contribution{}
+    }
+
     w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(contribs)
+    if err := json.NewEncoder(w).Encode(contribs); err != nil {
+        http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+        return
+    }
 }

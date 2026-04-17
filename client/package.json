@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "list": "tsx contrib.ts list",
+    "list:repo": "tsx contrib.ts list --repo",
+    "add": "tsx contrib.ts add"
   },
   "repository": {
     "type": "git",

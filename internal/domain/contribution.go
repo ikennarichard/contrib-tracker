@@ -8,10 +8,11 @@ import (
 
 // Contribution is the core business entity.
 type Contribution struct {
-    Title string
-    Repo  string
-    Date  string
-    URL   string
+    ID         int    `json:"id,omitempty"`
+    Title      string `json:"title"`
+    Repo string `json:"repository"`
+    Date       string `json:"date"`
+    URL        string `json:"url,omitempty"`
 }
 
 func NewContribution(title, repo, date, url string) (*Contribution, error) {

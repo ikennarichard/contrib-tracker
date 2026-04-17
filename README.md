@@ -110,6 +110,16 @@ go run main.go -server
 go run main.go -server -port 3000 # use custom port
 ```
 
+## How to TS client
+
+```bash
+tsx contrib.ts add --title "Fixed login bug" --repo "ikennarichard/contrib-tracker" --url "https://github.com/ikennarichard/contrib-tracker/pull/5"
+
+# List contributions
+tsx contrib.ts list
+tsx contrib.ts list --repo "ikennarichard/contrib-tracker"
+```
+
 ## Running Tests
 
 Tests use only the standard testing package and an in-memory mock repository — no database or Docker required.

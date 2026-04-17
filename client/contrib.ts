@@ -31,6 +31,7 @@ async function main() {
       const contributions = await service.getContributions(repoFilter);
 
       console.log(`📋 Contributions${repoFilter ? ` for ${repoFilter}` : ''}:`);
+      // console.log(contributions);
       if (contributions.length === 0) {
         console.log('No contributions found.');
       } else {
