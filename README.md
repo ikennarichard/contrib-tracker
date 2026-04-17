@@ -102,6 +102,14 @@ go run main.go list
 go run main.go help
 ```
 
+## How to run server
+
+```bash
+go run main.go -server
+
+go run main.go -server -port 3000 # use custom port
+```
+
 ## Running Tests
 
 Tests use only the standard testing package and an in-memory mock repository — no database or Docker required.

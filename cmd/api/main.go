@@ -1,20 +1,25 @@
 package main
 
 import (
-    "flag"
-    "fmt"
-    "log"
-    "os"
+	"flag"
+	"fmt"
+	"log"
+	"os"
 
-    "github.com/joho/godotenv"
-    "github.com/ikennarichard/contrib-tracker/internal/postgres"
-    "github.com/ikennarichard/contrib-tracker/internal/service"
+	"github.com/ikennarichard/contrib-tracker/internal/postgres"
+	"github.com/ikennarichard/contrib-tracker/internal/server"
+	"github.com/ikennarichard/contrib-tracker/internal/service"
+	"github.com/joho/godotenv"
 )
 
 func main() {
     if err := godotenv.Load(); err != nil {
         log.Fatal("Error loading .env file", err)
     }
+
+    runServer := flag.Bool("server", false, "Run as HTTP server")
+    port := flag.String("port", "8080", "Port for HTTP server")
+    flag.Parse()
 
     connStr := os.Getenv("DATABASE_URL")
     if connStr == "" {
@@ -29,6 +34,16 @@ func main() {
 
     svc := service.New(repo)
 
+        if *runServer {
+        fmt.Printf("Starting http server on http://localhost:%s\n", *port)
+        srv := server.NewServer(svc, *port)
+        log.Fatal(srv.Start())
+    } else {
+        runCLI(svc)
+    }
+}
+
+func runCLI(svc *service.ContributionService) {
     if len(os.Args) < 2 {
         printUsage()
         os.Exit(1)
