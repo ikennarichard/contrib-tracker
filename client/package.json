@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "list": "tsx contrib.ts list",
     "list:repo": "tsx contrib.ts list --repo",
     "add": "tsx contrib.ts add"
@@ -21,8 +23,12 @@
   },
   "homepage": "https://github.com/ikennarichard/contrib-tracker#readme",
   "devDependencies": {
+    "@mswjs/interceptors": "^0.41.3",
     "@types/node": "^25.5.2",
+    "@vitest/ui": "^4.1.4",
+    "msw": "^2.13.4",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
   }
 }
